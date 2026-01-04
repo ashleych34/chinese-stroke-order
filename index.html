@@ -1,68 +1,24 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Stroke Diagram</title>
+  <title>Chinese Stroke Order Playground</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 20px; }
     #target { width: 420px; height: 420px; border: 1px solid #ddd; display: grid; place-items: center; }
     .hint { margin-top: 10px; color: #666; font-size: 14px; }
   </style>
 </head>
 <body>
+  <h2>Stroke Order Playground</h2>
   <div id="target"></div>
-  <div class="hint">Try: 我, 永, 愛, 龍</div>
+  <div class="hint">Click anywhere to cycle: 我, 永, 愛, 龍, 學, 心</div>
 
   <script>
-    // --- Stroke diagram renderer (pure frontend) ---
-
-    const HanziStrokeData = (() => {
-      // Cache: char -> data
-      const cache = new Map();
-
-      function toCodePoints(str) {
-        // Handles surrogate pairs correctly
-        const cps = [];
-        for (const ch of str) cps.push(ch.codePointAt(0));
-        return cps;
-      }
-
-      function isSingleGrapheme(str) {
-        // Accept a single Unicode "character" (including surrogate-pair CJK extensions)
-        const cps = toCodePoints(str);
-        return cps.length === 1;
-      }
-
-      async function loadCharData(char, opts = {}) {
-        if (!isSingleGrapheme(char)) {
-          throw new Error(`Expected a single character, got "${char}"`);
-        }
-        if (cache.has(char)) return cache.get(char);
-
-        const cdnBase = opts.cdnBase || "https://unpkg.com/hanzi-writer-data@2.0.1";
-        // Files are named like: /我.json, /亞.json, ...
-        const url = `${cdnBase}/${encodeURIComponent(char)}.json`;
-
-        const res = await fetch(url, { mode: "cors" });
-        if (!res.ok) {
-          throw new Error(`Stroke data not found for "${char}" (HTTP ${res.status})`);
-        }
-        const data = await res.json();
-
-        // Expected fields in Hanzi Writer Data:
-        // { strokes: [path...], medians: [ [ [x,y], ... ], ... ] }
-        if (!data || !Array.isArray(data.strokes) || !Array.isArray(data.medians)) {
-          throw new Error(`Unexpected data shape for "${char}"`);
-        }
-
-        cache.set(char, data);
-        return data;
-      }
-
-      return { loadCharData };
-    })();
-
+    // ----------------------------
+    // Helpers
+    // ----------------------------
     function createSvgEl(tag) {
       return document.createElementNS("http://www.w3.org/2000/svg", tag);
     }
@@ -79,7 +35,6 @@
     }
 
     function medianToPathD(median) {
-      // Convert [[x,y],[x,y],...] to "M x y L x y ..."
       if (!Array.isArray(median) || median.length < 2) return "";
       const parts = [];
       for (let i = 0; i < median.length; i++) {
@@ -91,6 +46,52 @@
       return parts.join(" ");
     }
 
+    // ----------------------------
+    // Data loader (CDN + cache)
+    // ----------------------------
+    const HanziStrokeData = (() => {
+      const cache = new Map();
+
+      function toCodePoints(str) {
+        const cps = [];
+        for (const ch of str) cps.push(ch.codePointAt(0));
+        return cps;
+      }
+
+      function isSingleGrapheme(str) {
+        const cps = toCodePoints(str);
+        return cps.length === 1;
+      }
+
+      async function loadCharData(char, opts = {}) {
+        if (!isSingleGrapheme(char)) {
+          throw new Error(`Expected a single character, got "${char}"`);
+        }
+        if (cache.has(char)) return cache.get(char);
+
+        const cdnBase = opts.cdnBase || "https://unpkg.com/hanzi-writer-data@2.0.1";
+        const url = `${cdnBase}/${encodeURIComponent(char)}.json`;
+
+        const res = await fetch(url, { mode: "cors" });
+        if (!res.ok) {
+          throw new Error(`Stroke data not found for "${char}" (HTTP ${res.status})`);
+        }
+        const data = await res.json();
+
+        if (!data || !Array.isArray(data.strokes) || !Array.isArray(data.medians)) {
+          throw new Error(`Unexpected data shape for "${char}"`);
+        }
+
+        cache.set(char, data);
+        return data;
+      }
+
+      return { loadCharData };
+    })();
+
+    // ----------------------------
+    // Main renderer
+    // ----------------------------
     async function renderStrokeDiagram(container, char, options = {}) {
       const opts = {
         width: options.width ?? 400,
@@ -109,14 +110,10 @@
         medianColor: options.medianColor ?? "#1e5cff",
         numberColor: options.numberColor ?? "#d11",
 
-        // If you want a different CDN version/base:
         cdnBase: options.cdnBase ?? "https://unpkg.com/hanzi-writer-data@2.0.1",
-
-        // Hanzi Writer data uses a 1024x1024-ish coordinate space; viewBox 0..1024 works well
         viewBox: options.viewBox ?? "0 0 1024 1024",
       };
 
-      // Allow passing an element or an element id
       const host = (typeof container === "string") ? document.getElementById(container) : container;
       if (!host) throw new Error("Container not found");
 
@@ -124,17 +121,14 @@
       host.style.width = `${opts.width}px`;
       host.style.height = `${opts.height}px`;
 
-      // Create SVG root
       const svg = createSvgEl("svg");
       svg.setAttribute("width", "100%");
       svg.setAttribute("height", "100%");
       svg.setAttribute("viewBox", opts.viewBox);
       svg.setAttribute("role", "img");
       svg.setAttribute("aria-label", `Stroke order diagram for ${char}`);
-      
       svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
       svg.style.display = "block";
-
 
       // defs: arrow marker
       const defs = createSvgEl("defs");
@@ -175,14 +169,17 @@
         throw err;
       }
 
+      // ----------------------------
+      // IMPORTANT FIX:
+      // Flip Y axis to match dataset coordinate system
+      // ----------------------------
+      const flipG = createSvgEl("g");
+      flipG.setAttribute("transform", "translate(0,1024) scale(1,-1)");
+      svg.appendChild(flipG);
+
       const strokesG = createSvgEl("g");
       const mediansG = createSvgEl("g");
       const numbersG = createSvgEl("g");
-
-      svg.appendChild(strokesG);
-      svg.appendChild(mediansG);
-      svg.appendChild(numbersG);
-
 
       // Outline strokes
       if (opts.showOutline) {
@@ -240,21 +237,30 @@
             t.setAttribute("dx", "10");
             t.setAttribute("dy", "-10");
 
+            // Counter-flip ONLY the text so it stays upright inside flipG
+            t.setAttribute(
+              "transform",
+              `translate(${p0.x},${p0.y}) scale(1,-1) translate(${-p0.x},${-p0.y})`
+            );
+
             t.textContent = String(i + 1);
             numbersG.appendChild(t);
           }
         }
       }
 
-      svg.appendChild(strokesG);
-      svg.appendChild(mediansG);
-      svg.appendChild(numbersG);
+      // Append groups into the flipped coordinate group
+      flipG.appendChild(strokesG);
+      flipG.appendChild(mediansG);
+      flipG.appendChild(numbersG);
 
       host.appendChild(svg);
       return { svg, data };
     }
 
+    // ----------------------------
     // Demo usage
+    // ----------------------------
     (async () => {
       const target = document.getElementById("target");
       try {
@@ -267,17 +273,22 @@
           showArrows: true,
         });
       } catch (e) {
-        // Swallow here; errors are already rendered in SVG + thrown for debugging
         console.warn(e);
       }
 
-      // Quick test: click anywhere to cycle a few characters
       const chars = ["我", "永", "愛", "龍", "學", "心"];
       let idx = 0;
       document.body.addEventListener("click", async () => {
         idx = (idx + 1) % chars.length;
         try {
-          await renderStrokeDiagram(target, chars[idx]);
+          await renderStrokeDiagram(target, chars[idx], {
+            width: 420,
+            height: 420,
+            showOutline: true,
+            showMedians: true,
+            showNumbers: true,
+            showArrows: true,
+          });
         } catch (e) {
           console.warn(e);
         }
