@@ -131,6 +131,10 @@
       svg.setAttribute("viewBox", opts.viewBox);
       svg.setAttribute("role", "img");
       svg.setAttribute("aria-label", `Stroke order diagram for ${char}`);
+      
+      svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+      svg.style.display = "block";
+
 
       // defs: arrow marker
       const defs = createSvgEl("defs");
