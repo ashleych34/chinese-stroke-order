@@ -179,6 +179,11 @@
       const mediansG = createSvgEl("g");
       const numbersG = createSvgEl("g");
 
+      svg.appendChild(strokesG);
+      svg.appendChild(mediansG);
+      svg.appendChild(numbersG);
+
+
       // Outline strokes
       if (opts.showOutline) {
         for (const d of data.strokes) {
