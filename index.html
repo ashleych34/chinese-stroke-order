@@ -188,12 +188,11 @@
       }
 
       // ----------------------------
-      // IMPORTANT FIX:
-      // Flip Y axis to match dataset coordinate system
+      // Center character properly in the display box
       // ----------------------------
       const flipG = createSvgEl("g");
-      // Slightly scale down to avoid clipping, keep centered, and flip Y
-      flipG.setAttribute("transform", "translate(512,512) scale(0.80,-0.80) translate(-512,-512)");
+      // Scale to 90% to leave some padding, flip Y-axis, and ensure centering
+      flipG.setAttribute("transform", "translate(512,512) scale(0.90,-0.90) translate(-512,-512)");
 
       svg.appendChild(flipG);
 
