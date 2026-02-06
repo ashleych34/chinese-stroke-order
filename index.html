@@ -7,23 +7,31 @@
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 20px; }
     #target { width: 420px; height: 420px; border: 1px solid #ddd; display: grid; place-items: center; }
-    .hint { margin-top: 10px; color: #666; font-size: 14px; }
     .search-container { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
-    #searchInput { padding: 8px 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; min-width: 200px; }
+    #searchInput { padding: 8px 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; min-width: 300px; }
     #searchButton { padding: 8px 16px; font-size: 16px; background: #1e5cff; color: white; border: none; border-radius: 4px; cursor: pointer; }
     #searchButton:hover { background: #1548cc; }
     .error-message { color: #d11; font-size: 14px; margin-top: 5px; }
+    .navigation-container { margin-top: 20px; display: flex; gap: 10px; align-items: center; justify-content: center; }
+    .nav-button { padding: 8px 16px; font-size: 16px; background: #1e5cff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .nav-button:hover:not(:disabled) { background: #1548cc; }
+    .nav-button:disabled { background: #ccc; cursor: not-allowed; }
+    .char-indicator { font-size: 14px; color: #666; min-width: 100px; text-align: center; }
   </style>
 </head>
 <body>
   <h2>Stroke Order Playground</h2>
   <div class="search-container">
-    <input type="text" id="searchInput" placeholder="Enter a Chinese character (e.g., 我, 愛)" />
+    <input type="text" id="searchInput" placeholder="Enter Chinese characters (e.g., 我愛你)" />
     <button id="searchButton">Search</button>
   </div>
   <div id="errorMessage" class="error-message"></div>
   <div id="target"></div>
-  <div class="hint">Or click anywhere to cycle: 我, 永, 愛, 龍, 學, 心</div>
+  <div class="navigation-container">
+    <button id="prevButton" class="nav-button">← Previous</button>
+    <span id="charIndicator" class="char-indicator"></span>
+    <button id="nextButton" class="nav-button">Next →</button>
+  </div>
 
   <script>
     // ----------------------------
@@ -278,6 +286,25 @@
       const searchInput = document.getElementById("searchInput");
       const searchButton = document.getElementById("searchButton");
       const errorMessage = document.getElementById("errorMessage");
+      const prevButton = document.getElementById("prevButton");
+      const nextButton = document.getElementById("nextButton");
+      const charIndicator = document.getElementById("charIndicator");
+
+      let characters = [];
+      let currentIndex = 0;
+
+      function updateNavigation() {
+        if (characters.length === 0) {
+          prevButton.disabled = true;
+          nextButton.disabled = true;
+          charIndicator.textContent = "";
+          return;
+        }
+        
+        prevButton.disabled = currentIndex === 0;
+        nextButton.disabled = currentIndex === characters.length - 1;
+        charIndicator.textContent = `${currentIndex + 1} of ${characters.length}`;
+      }
 
       async function displayCharacter(char) {
         try {
@@ -289,35 +316,36 @@
             showNumbers: true,
             showArrows: true,
           });
-          // Clear error message on success
-          if (!errorMessage.textContent.startsWith("Displaying first character")) {
-            errorMessage.textContent = "";
-          }
+          errorMessage.textContent = "";
         } catch (e) {
           console.warn(e);
           errorMessage.textContent = `Error: No stroke data found for "${char}". Please try a different character.`;
         }
       }
 
-      // Initial render
-      try {
-        await displayCharacter("我");
-      } catch (e) {
-        console.warn(e);
+      async function showCurrentCharacter() {
+        if (characters.length > 0 && currentIndex >= 0 && currentIndex < characters.length) {
+          await displayCharacter(characters[currentIndex]);
+          updateNavigation();
+        }
       }
+
+      // Initial render with a default character
+      characters = ["我"];
+      currentIndex = 0;
+      await showCurrentCharacter();
 
       // Search button click handler
       searchButton.addEventListener("click", async () => {
-        const char = searchInput.value.trim();
-        if (!char) {
-          errorMessage.textContent = "Please enter a Chinese character.";
+        const input = searchInput.value.trim();
+        if (!input) {
+          errorMessage.textContent = "Please enter Chinese characters.";
           return;
         }
-        const chars = Array.from(char);
-        if (chars.length > 1) {
-          errorMessage.textContent = `Displaying first character "${chars[0]}" (${chars.length} characters entered).`;
-        }
-        await displayCharacter(chars[0]);
+        
+        characters = Array.from(input);
+        currentIndex = 0;
+        await showCurrentCharacter();
       });
 
       // Enter key handler
@@ -327,16 +355,36 @@
         }
       });
 
-      // Click to cycle through predefined characters
-      const chars = ["我", "永", "愛", "龍", "學", "心"];
-      let idx = 0;
-      document.body.addEventListener("click", async (e) => {
-        // Don't cycle if clicking on the search container or its children
-        if (e.target.closest('.search-container') || e.target.closest('#errorMessage')) {
+      // Previous button handler
+      prevButton.addEventListener("click", async () => {
+        if (currentIndex > 0) {
+          currentIndex--;
+          await showCurrentCharacter();
+        }
+      });
+
+      // Next button handler
+      nextButton.addEventListener("click", async () => {
+        if (currentIndex < characters.length - 1) {
+          currentIndex++;
+          await showCurrentCharacter();
+        }
+      });
+
+      // Keyboard arrow key navigation
+      document.addEventListener("keydown", (e) => {
+        // Don't handle arrow keys if user is typing in the search input
+        if (document.activeElement === searchInput) {
           return;
         }
-        idx = (idx + 1) % chars.length;
-        await displayCharacter(chars[idx]);
+        
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          prevButton.click();
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault();
+          nextButton.click();
+        }
       });
     })();
   </script>
