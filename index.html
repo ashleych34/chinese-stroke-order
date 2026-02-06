@@ -191,8 +191,9 @@
       // Center character properly in the display box
       // ----------------------------
       const flipG = createSvgEl("g");
-      // Scale to 90% to leave some padding, flip Y-axis, and ensure centering
-      flipG.setAttribute("transform", "translate(512,512) scale(0.90,-0.90) translate(-512,-512)");
+      // Transform: center at (512,512), scale and flip, then translate to compensate for offset
+      // Using -480,-480 instead of -512,-512 to shift character up and left
+      flipG.setAttribute("transform", "translate(512,512) scale(0.80,-0.80) translate(-480,-480)");
 
       svg.appendChild(flipG);
 
