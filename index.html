@@ -8,12 +8,22 @@
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 20px; }
     #target { width: 420px; height: 420px; border: 1px solid #ddd; display: grid; place-items: center; }
     .hint { margin-top: 10px; color: #666; font-size: 14px; }
+    .search-container { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+    #searchInput { padding: 8px 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; min-width: 200px; }
+    #searchButton { padding: 8px 16px; font-size: 16px; background: #1e5cff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    #searchButton:hover { background: #1548cc; }
+    .error-message { color: #d11; font-size: 14px; margin-top: 5px; }
   </style>
 </head>
 <body>
   <h2>Stroke Order Playground</h2>
+  <div class="search-container">
+    <input type="text" id="searchInput" placeholder="Enter a Chinese character (e.g., 我, 愛)" />
+    <button id="searchButton">Search</button>
+  </div>
+  <div id="errorMessage" class="error-message"></div>
   <div id="target"></div>
-  <div class="hint">Click anywhere to cycle: 我, 永, 愛, 龍, 學, 心</div>
+  <div class="hint">Or click anywhere to cycle: 我, 永, 愛, 龍, 學, 心</div>
 
   <script>
     // ----------------------------
@@ -265,25 +275,14 @@
     // ----------------------------
     (async () => {
       const target = document.getElementById("target");
-      try {
-        await renderStrokeDiagram(target, "我", {
-          width: 420,
-          height: 420,
-          showOutline: true,
-          showMedians: true,
-          showNumbers: true,
-          showArrows: true,
-        });
-      } catch (e) {
-        console.warn(e);
-      }
+      const searchInput = document.getElementById("searchInput");
+      const searchButton = document.getElementById("searchButton");
+      const errorMessage = document.getElementById("errorMessage");
 
-      const chars = ["我", "永", "愛", "龍", "學", "心"];
-      let idx = 0;
-      document.body.addEventListener("click", async () => {
-        idx = (idx + 1) % chars.length;
+      async function displayCharacter(char) {
+        errorMessage.textContent = "";
         try {
-          await renderStrokeDiagram(target, chars[idx], {
+          await renderStrokeDiagram(target, char, {
             width: 420,
             height: 420,
             showOutline: true,
@@ -293,7 +292,46 @@
           });
         } catch (e) {
           console.warn(e);
+          errorMessage.textContent = `Error: No stroke data found for "${char}". Please try a different character.`;
         }
+      }
+
+      // Initial render
+      try {
+        await displayCharacter("我");
+      } catch (e) {
+        console.warn(e);
+      }
+
+      // Search button click handler
+      searchButton.addEventListener("click", async () => {
+        const char = searchInput.value.trim();
+        if (!char) {
+          errorMessage.textContent = "Please enter a Chinese character.";
+          return;
+        }
+        // Get the first character if multiple are entered
+        const firstChar = Array.from(char)[0];
+        await displayCharacter(firstChar);
+      });
+
+      // Enter key handler
+      searchInput.addEventListener("keypress", async (e) => {
+        if (e.key === "Enter") {
+          searchButton.click();
+        }
+      });
+
+      // Click to cycle through predefined characters
+      const chars = ["我", "永", "愛", "龍", "學", "心"];
+      let idx = 0;
+      document.body.addEventListener("click", async (e) => {
+        // Don't cycle if clicking on the search input or button
+        if (e.target === searchInput || e.target === searchButton) {
+          return;
+        }
+        idx = (idx + 1) % chars.length;
+        await displayCharacter(chars[idx]);
       });
     })();
   </script>
