@@ -22,15 +22,15 @@
 <body>
   <h2>Stroke Order Playground</h2>
   <div class="search-container">
-    <input type="text" id="searchInput" placeholder="Enter Chinese characters (e.g., 我愛你)" />
+    <input type="text" id="searchInput" placeholder="Enter Chinese characters (e.g., 我愛你)" aria-label="Chinese characters search" />
     <button id="searchButton">Search</button>
   </div>
   <div id="errorMessage" class="error-message"></div>
   <div id="target"></div>
   <div class="navigation-container">
-    <button id="prevButton" class="nav-button">← Previous</button>
-    <span id="charIndicator" class="char-indicator"></span>
-    <button id="nextButton" class="nav-button">Next →</button>
+    <button id="prevButton" class="nav-button" aria-label="Previous character">← Previous</button>
+    <span id="charIndicator" class="char-indicator" aria-live="polite" aria-atomic="true"></span>
+    <button id="nextButton" class="nav-button" aria-label="Next character">Next →</button>
   </div>
 
   <script>
